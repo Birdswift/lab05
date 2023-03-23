@@ -1,74 +1,78 @@
-
-#include <iostream>
 #include <Account.h>
 #include <Transaction.h>
-#include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <gtest/gtest.h>
 
-//using::testing::AtLeast;
-//using::testing::Return;
-//using::testing::NiceMock;
+using ::testing::Return;
 
 class MockAccount : public Account {
 public:
-    MockAccount(int id, int balance):Account(id, balance){};
-    MOCK_METHOD(void, Unlock, ());
-    MOCK_METHOD(void, Lock, ());
-    MOCK_METHOD(int, id, (), (const));
-    MOCK_METHOD(void, ChangeBalance, (int diff), ());
-    MOCK_METHOD(int, GetBalance, (), ());
+    MockAccount(int id, int balance) : Account(id, balance) {}
+
+    MOCK_METHOD(int, GetBalance, (), (const, override));
+    MOCK_METHOD(void, ChangeBalance, (int diff), (override));
+    MOCK_METHOD(void, Lock, (), (override));
+    MOCK_METHOD(void, Unlock, (), (override));
 };
 
-class MockTransaction: public Transaction {
-public:
-    MOCK_METHOD(bool, Make, (Account& from, Account& to, int sum), ());
-    MOCK_METHOD(void, set_fee, (int fee), ());
-    MOCK_METHOD(int, fee, (), ());
-};
+TEST(BankTest, Bank) {
+MockAccount t1(1, 220);
+MockAccount t2(2, 100);
+Transaction test;
+EXPECT_CALL(t1, GetBalance())
+.WillOnce(testing::Return(220))
+.WillOnce(testing::Return(69))
+.WillOnce(testing::Return(69))
+.WillOnce(testing::Return(69));
+EXPECT_CALL(t2, GetBalance())
+.WillOnce(testing::Return(250))
+.WillOnce(testing::Return(250));
+EXPECT_CALL(t1, ChangeBalance(-151))
+.WillOnce(testing::Invoke(nullptr));
+EXPECT_CALL(t2, ChangeBalance(testing::_))
+.Times(3);
+EXPECT_CALL(t1, Lock())
+.Times(5)
+.WillOnce(testing::Throw(std::runtime_error("at first lock the account")))
+.WillOnce(nullptr)
+.WillOnce(testing::Throw(std::runtime_error("already locked")))
+.WillOnce(nullptr)
+.WillOnce(nullptr);
+EXPECT_CALL(t2, Lock())
+.Times(2);
+EXPECT_CALL(t1, Unlock())
+.Times(3);
+EXPECT_CALL(t2, Unlock())
+.Times(2);
 
-TEST(Account, Balance_ID_Change) {
-    MockAccount acc(1, 100);
-    EXPECT_CALL(acc, GetBalance()).Times(3);
-    EXPECT_CALL(acc, Lock()).Times(1);
-    EXPECT_CALL(acc, Unlock()).Times(1);
-    EXPECT_CALL(acc, ChangeBalance(testing::_)).Times(2);
-    EXPECT_CALL(acc, id()).Times(1);
-    acc.GetBalance();
-    acc.id();
-    acc.Unlock();
-    acc.ChangeBalance(1000);
-    acc.GetBalance();
-    acc.ChangeBalance(2);
-    acc.GetBalance();
-    acc.Lock();
-    //EXPECT_EQ(acc.GetBalance(), 100);
+EXPECT_THROW(test.Make(t1, t1, 50), std::logic_error);
+EXPECT_THROW(test.Make(t1, t2, 50), std::logic_error);
+EXPECT_THROW(test.Make(t1, t2, -50), std::invalid_argument);
+
+test.set_fee(200);
+EXPECT_EQ(test.Make(t1, t2, 150), 0);
+EXPECT_EQ(test.fee(), 200);
+test.set_fee(1);
+
+EXPECT_THROW(test.Make(t1, t2, 150), std::runtime_error);
+t1.Lock();
+EXPECT_THROW(test.Make(t1, t2, 150), std::runtime_error);
+t1.Unlock();
+
+bool res = test.Make(t1, t2, 150);
+EXPECT_EQ(res, 1);
+
+res = test.Make(t1, t2, 150);
+EXPECT_EQ(res, 0);
 }
 
-TEST(Account, Balance_ID_Change_2) {
-    Account acc(0, 100);
-    EXPECT_THROW(acc.ChangeBalance(50), std::runtime_error);
-    acc.Lock();
-    acc.ChangeBalance(50);
-    EXPECT_EQ(acc.GetBalance(), 150);
-    EXPECT_THROW(acc.Lock(), std::runtime_error);
-    acc.Unlock();
-}
+TEST(BankTest, Account) {
+Account t1(1, 500);
 
-TEST(Transaction, TransTest) {
-    MockTransaction trans;
-    MockAccount first(1, 100);
-    MockAccount second(2, 250);
-    MockAccount flat_org(3, 10000);
-    MockAccount org(4, 5000);
-    EXPECT_CALL(trans, set_fee(testing::_)).Times(1);
-    EXPECT_CALL(trans, fee()).Times(1);
-    EXPECT_CALL(trans, Make(testing::_, testing::_, testing::_)).Times(2);
-    EXPECT_CALL(first, GetBalance()).Times(1);
-    EXPECT_CALL(second, GetBalance()).Times(1);
-    trans.set_fee(300);
-    trans.Make(first, second, 2000);
-    trans.fee();
-    first.GetBalance();
-    second.GetBalance();
-    trans.Make(org, first, 1000);
+EXPECT_EQ(t1.GetBalance(), 500);
+EXPECT_THROW(t1.ChangeBalance(-100), std::runtime_error);
+t1.Lock();
+t1.ChangeBalance(-100);
+EXPECT_EQ(t1.GetBalance(), 400);
+t1.Unlock();
 }
