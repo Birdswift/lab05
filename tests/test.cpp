@@ -21,7 +21,7 @@ TEST(Account, Banking){
 	test.Unlock();
 	ASSERT_THROW(test.ChangeBalance(100), std::runtime_error);
 //радуемся жизни
-
+}
 
 TEST(Transaction, Banking){
 //создаём константы. base_fee для полноценного теста должен быть хотя бы 51.
@@ -52,4 +52,4 @@ TEST(Transaction, Banking){
 	ASSERT_EQ(Bob.GetBalance(), base_B+1000);	
 	ASSERT_EQ(Alice.GetBalance(), base_A-1000-base_fee);
 }
-}
+
