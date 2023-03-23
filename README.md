@@ -110,13 +110,9 @@ add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/banking)
 
 add_executable(tests ${CMAKE_CURRENT_SOURCE_DIR}/tests/test.cpp) // местоположение моих тестов
 
-if (COVERAGE)  // если определена переменная, то добавляются опции библиотеки и компилятора
-
     target_compile_options(tests PRIVATE --coverage)
 
     target_link_libraries(tests PRIVATE --coverage)
-
-endif()
 
 target_include_directories(tests PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/banking)
 
